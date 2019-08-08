@@ -1,0 +1,100 @@
+[agent]
+  collection_jitter = "0s"
+  debug = false
+  flush_interval = "1s"
+  flush_jitter = "0s"
+  hostname = ""
+  interval = "60s"
+  logfile = "/opt/aws/amazon-cloudwatch-agent/logs/amazon-cloudwatch-agent.log"
+  metric_batch_size = 1000
+  metric_buffer_limit = 10000
+  omit_hostname = false
+  precision = ""
+  quiet = false
+  round_interval = false
+
+[inputs]
+
+  [[inputs.cpu]]
+    fieldpass = ["usage_idle", "usage_iowait", "usage_steal", "usage_guest", "usage_user", "usage_system"]
+    interval = "10s"
+    percpu = false
+    totalcpu = true
+    [inputs.cpu.tags]
+      "aws:StorageResolution" = "true"
+
+  [[inputs.disk]]
+    fieldpass = ["used_percent"]
+    interval = "10s"
+    [inputs.disk.tags]
+      "aws:StorageResolution" = "true"
+
+  [[inputs.diskio]]
+    fieldpass = ["io_time", "write_bytes", "read_bytes", "writes", "reads"]
+    interval = "10s"
+    report_deltas = true
+    [inputs.diskio.tags]
+      "aws:StorageResolution" = "true"
+
+  [[inputs.mem]]
+    fieldpass = ["used_percent"]
+    interval = "10s"
+    [inputs.mem.tags]
+      "aws:StorageResolution" = "true"
+
+  [[inputs.net]]
+    fieldpass = ["bytes_sent", "bytes_recv", "packets_sent", "packets_recv"]
+    interval = "10s"
+    report_deltas = true
+    [inputs.net.tags]
+      "aws:StorageResolution" = "true"
+
+  [[inputs.netstat]]
+    fieldpass = ["tcp_established", "tcp_time_wait"]
+    interval = "10s"
+    [inputs.netstat.tags]
+      "aws:StorageResolution" = "true"
+
+  [[inputs.swap]]
+    fieldpass = ["used_percent"]
+    interval = "10s"
+    [inputs.swap.tags]
+      "aws:StorageResolution" = "true"
+
+  [[inputs.tail]]
+    data_format = "value"
+    data_type = "string"
+    file_state_folder = "/opt/aws/amazon-cloudwatch-agent/logs/state"
+    name_override = "raw_log_line"
+
+    [[inputs.tail.file_config]]
+      file_path = "/var/log/amazon/amazon-cloudwatch-agent/amazon-cloudwatch-agent.log"
+      from_beginning = true
+      log_group_name = "amazon-cloudwatch-agent"
+      log_stream_name = "1fea6f6988ea"
+      pipe = false
+
+[outputs]
+
+  [[outputs.cloudwatch]]
+    force_flush_interval = "60s"
+    namespace = "CWAgent"
+    profile = "AmazonCloudWatchAgent"
+    region = "us-east-1"
+    shared_credential_file = "/root/.aws/credentials"
+    [outputs.cloudwatch.tagdrop]
+      log_group_name = ["*"]
+
+  [[outputs.cloudwatchlogs]]
+    file_name_field_key = "file_name"
+    file_state_folder = "/opt/aws/amazon-cloudwatch-agent/logs/state"
+    force_flush_interval = "5s"
+    log_entry_field_key = "value"
+    log_group_name_tag_key = "log_group_name"
+    log_stream_name = "1fea6f6988ea"
+    log_stream_name_tag_key = "log_stream_name"
+    log_timestamp_field_key = "log_timestamp"
+    offset_field_key = "offset"
+    profile = "AmazonCloudWatchAgent"
+    region = "eu-west-1"
+    shared_credential_file = "/root/.aws/credentials"

@@ -1,0 +1,77 @@
+---
+resources:
+- name: myapp-code-repository
+  type: git
+  source:
+    uri: "https://github.com/jskim7827/myapp-code-repository.git"
+
+jobs:
+- name: run unit tests
+  plan:
+  - get: myapp-code-repository
+    trigger: true
+  - task: run unit tests
+    config:
+      platform: linux
+      image_resource:
+        type: docker-image
+        source:
+          repository: python
+          tag: 3.4
+      inputs:
+        - name: myapp-code-repository
+      run:
+        path: python
+        args:
+          - "myapp-code-repository/tests.py"
+
+- name: deploy production environment changes
+  plan:
+  - get: myapp-code-repository
+    trigger: true
+    passed:
+      - run unit tests
+  - task: deploy production environment changes
+    config:
+      platform: linux
+      image_resource:
+        type: docker-image
+        source:
+          repository: python
+          tag: 3.4
+      inputs:
+        - name: myapp-code-repository
+      params:
+        SERVICE_ACCOUNT_KEY: ((SERVICE_ACCOUNT_KEY))
+      run:
+        path: sh
+        args:
+          - -exc
+          - curl -LOs https://releases.hashicorp.com/terraform/0.11.11/terraform_0.11.11_linux_amd64.zip && unzip terraform_0.11.11_linux_amd64.zip && chmod +x ./terraform && mv ./terraform /usr/local/bin && echo -n $SERVICE_ACCOUNT_KEY > service-account-key.json && terraform init myapp-code-repository/ && terraform apply -auto-approve myapp-code-repository/
+
+
+- name: deploy to production
+  plan:
+  - get: myapp-code-repository
+    trigger: true
+    passed:
+      - deploy production environment changes
+  - task: deploy to production
+    config:
+      platform: linux
+      image_resource:
+        type: docker-image
+        source:
+          repository: google/cloud-sdk
+          tag: 229.0.0
+      inputs:
+        - name: myapp-code-repository
+      params:
+        SERVICE_ACCOUNT_KEY: ((SERVICE_ACCOUNT_KEY))
+        AWS_ACCESS_KEY: ((AWS_ACCESS_KEY))
+        AWS_SECRET_KEY: ((AWS_SECRET_KEY))
+      run:
+        path: sh
+        args:
+          - -exc
+          - echo -n $SERVICE_ACCOUNT_KEY > service-account-key.json && gcloud auth activate-service-account my-cd-pipeline@my-cd-pipeline-228819.iam.gserviceaccount.com --key-file service-account-key.json && gcloud container clusters get-credentials production-cluster --project my-cd-pipeline-228819 --region europe-west1-b && kubectl delete secret aws-secrets --ignore-not-found=true && kubectl create secret generic aws-secrets --from-literal=aws_access_key="${AWS_ACCESS_KEY}" --from-literal=aws_secret_key="${AWS_SECRET_KEY}" && kubectl apply -f myapp-code-repository/my-application.yml
